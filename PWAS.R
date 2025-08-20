@@ -4,7 +4,7 @@ library(lme4)
 options(future.globals.maxSize=12*1024^3)
 
 dat <- data.table::fread("main_aging_dataset.csv") %>% left_join(data.table::fread("main_aging_cov.csv"),"eid") %>% as_tibble
-pro <- data.table::fread("/mnt/vol2/UKB_dataset/asset/olink_protein_wide2923_QC_knn_impute_INT.tsv") %>% as_tibble
+pro <- data.table::fread("olink_protein_QC_knn_impute_INT.tsv") %>% as_tibble
 
 dat <- dat %>% semi_join(pro, "eid")
 pro <- pro %>% semi_join(dat, "eid")
@@ -16,8 +16,7 @@ cov_list <- c('age','sex','tdi','ethnic','qualification','diet_score','smoke_sta
 dat <- dat %>% mutate(
   qualification = factor(qualification),
   smoke_status = factor(smoke_status),
-  alcohol_freq = factor(alcohol_freq),
-  ass_center = factor(ass_center)
+  alcohol_freq = factor(alcohol_freq)
 )
 
 multi.regress.tidy <- function(data, omic, exposure, outcome, covs){

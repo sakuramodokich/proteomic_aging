@@ -3,13 +3,13 @@ library(furrr)
 library(survival)
 options(future.globals.maxSize=12*1024^4)
 
-nmr_scatter_path <- "/mnt/vol2/UKB_dataset/omics/scatter/NMR"
+nmr_scatter_path <- "NMR"
 nmr_scatter_list <- list.files(nmr_scatter_path) %>% file.path(nmr_scatter_path,.)
 
 dat <- data.table::fread("main_aging_dataset.csv") %>% left_join(data.table::fread("main_aging_cov.csv"),"eid") %>% as_tibble
 sig_pro <- data.table::fread("result/step1_MR.csv") %>% filter(P_BON < 0.05) %>% pull(exposure) %>% unique
 sig_pro <- gsub("[-]", "_", sig_pro)
-pro <- data.table::fread("/mnt/vol2/UKB_dataset/asset/olink_protein_wide2923_QC_knn_impute_INT.tsv", select = c('eid', sig_pro)) %>% as_tibble
+pro <- data.table::fread("olink_protein_knn_impute_INT.tsv", select = c('eid', sig_pro)) %>% as_tibble
 names(pro) <- gsub("[_]", "-", names(pro))
 sig_pro <- names(pro)[-1]
 
@@ -113,7 +113,7 @@ med.func <- function(data, x, m, y, covariate) {
     med.out <- mediation::mediate(model.m, model.y, sims = 500, treat = "x", mediator = "m", covariates = covariate)
     med.out %>% format(.) %>% return
   }
-  mediator <- data.table::fread(paste0("/mnt/vol2/UKB_dataset/omics/scatter/NMR/",m,".tsv")) %>% as_tibble
+  mediator <- data.table::fread(paste0("NMR/",m,".tsv")) %>% as_tibble
   data <- data %>% left_join(mediator, "eid")
   data <- data %>% dplyr::select(all_of(x),all_of(y),all_of(covariate),all_of(m)) %>% 
     dplyr::rename("x"=x,"y"=y,"m"=m)  %>% drop_na() 

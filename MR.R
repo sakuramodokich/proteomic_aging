@@ -2,10 +2,9 @@ library(tidyverse)
 library(TwoSampleMR)
 library(furrr)
 
-pQTL <- data.table::fread("/mnt/vol1/Resources/UKB_PPP_pQTL/UKB_PPP_5e8_hg38_Merged_SNP_n2677_Clumping_1MB_0.001.tsv") %>% as_tibble
+pQTL <- data.table::fread("UKB_PPP_5e8_Clumping_1MB_0.001.tsv") %>% as_tibble
 pQTL_list <- pQTL$PROTEIN %>% unique 
 aging_list <- c('kdm_delta','phenoage_delta','ltl','frailty_score','healthspan')
-aging_list <- "healthspan_new"
 
 mr_combined_val <- possibly(function(x){
   x2 <- dat_to_MRInput(x)
@@ -57,7 +56,7 @@ process_file <- possibly(function(e_data, o_file_name) {
 })
 
 full_mr_res <- NULL
-factor_list <- file.path("/mnt/vol2/TMP_gwas_res/aging_traits/processed",paste0(aging_list,".tsv"))
+factor_list <- file.path("processed",paste0(aging_list,".tsv"))
 for (i in 1:length(factor_list)) {
   trait <- basename(factor_list[i]) %>% gsub(".tsv","",.)
   print(paste0("Processing: ",trait))
@@ -71,10 +70,10 @@ for (i in 1:length(factor_list)) {
 }
 full_mr_res %>% write_csv("result/step1_MR.csv")
 
+# Parental 
 full_mr_res <- NULL
-#trait_assoc <- c('UMOD', 'HEXIM1', 'ACP1', 'EFEMP1', 'ATXN2L', 'FURIN', 'CELSR2', 'APOE', 'NT5C3A', 'IL1RN', 'KIT', 'SERPINF2', 'CEP170', 'SERPINA1', 'ARFIP1', 'NFATC1', 'TRDMT1', 'PARP1', 'TK1', 'TYMP', 'RPA2', 'COMMD1')
 trait_assoc <- data.table::fread("result/step1_MR.csv") %>% filter(P_BON < 0.05) %>% pull(exposure) %>% unique
-factor_list <- "/mnt/vol2/TMP_gwas_res/aging_traits/parent_lifespan.tsv"
+factor_list <- "parent_lifespan.tsv"
 for (i in 1:length(factor_list)) {
   trait <- basename(factor_list[i]) %>% gsub(".tsv","",.)
   print(paste0("Processing: ",trait))
@@ -87,7 +86,8 @@ for (i in 1:length(factor_list)) {
   plan(sequential)
 }
 full_mr_res %>% write_csv("result/step1_MR_parental.csv")
-# Sens
+
+# Sensitivity
 sig_pro <- data.table::fread("result/step1_MR.csv") %>% filter(P_BON < 0.05)
 pQTL <- pQTL %>% filter(PROTEIN %in% unique(sig_pro$exposure))
 
@@ -96,7 +96,7 @@ f <- function(x, y) {
   process_file(x, y)
 }
 trait <- sig_pro$outcome
-trait_file <- file.path("/mnt/vol2/TMP_gwas_res/aging_traits/processed",paste0(trait,".tsv"))
+trait_file <- file.path("processed",paste0(trait,".tsv"))
 protein <- sig_pro$exposure
 
 plan(multisession, workers = 20)
@@ -107,7 +107,7 @@ full_mr_res$outcome <- basename(full_mr_res$outcome) %>% gsub(".tsv","",.)
 full_mr_res %>% write_csv("result/step1_MR_sens.csv")
 
 # Validation
-pQTL <- data.table::fread("/mnt/vol1/Resources/Finngen_pQTL/FinnGen_R10_pQTL_1e6_cis_trans_1Mb_0.001.tsv") %>% as_tibble
+pQTL <- data.table::fread("FinnGen_R10_pQTL_1e6_cis_trans_1Mb_0.001.tsv") %>% as_tibble
 sig_pro <- data.table::fread("result/step1_MR.csv") %>% filter(P_BON < 0.05)
 pQTL <- pQTL %>% filter(PROTEIN %in% unique(sig_pro$exposure))
 
@@ -116,14 +116,14 @@ f <- function(x, y) {
   process_file(x, y)
 }
 trait <- sig_pro$outcome
-trait_file <- file.path("/mnt/vol2/TMP_gwas_res/aging_traits/processed",paste0(trait,".tsv"))
+trait_file <- file.path("processed",paste0(trait,".tsv"))
 protein <- sig_pro$exposure
 
 plan(multisession, workers = 20)
 full_mr_res <- future_pmap(list(protein, trait_file), ~ f(.x, .y), .options = furrr_options(seed = TRUE)) %>% reduce(rbind)
 plan(sequential)
 
-full_mr_res$outcome <- gsub("/mnt/vol2/TMP_gwas_res/aging_traits/processed/","",full_mr_res$outcome)
+full_mr_res$outcome <- gsub("processed/","",full_mr_res$outcome)
 full_mr_res$outcome <- gsub(".tsv","",full_mr_res$outcome)
 full_mr_res$outcome[full_mr_res$outcome=="kdm_delta"] <- "KDM-BA acceleration"
 full_mr_res$outcome[full_mr_res$outcome=="phenoage_delta"] <- "PhenoAge acceleration"
